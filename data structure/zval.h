@@ -1,7 +1,6 @@
 /***
  * /Zend/zend_types.h
  */
- 
 struct _zval_struct {
 	zend_value        value;			/* value */
 	union {
