@@ -28,3 +28,25 @@ struct _zval_struct {
 		uint32_t     extra;                /* not further specified */
 	} u2;
 };
+
+
+// zend_value
+typedef union _zend_value {
+	zend_long         lval;				/* long value */
+	double            dval;				/* double value */
+	zend_refcounted  *counted;
+	zend_string      *str;
+	zend_array       *arr;
+	zend_object      *obj;
+	zend_resource    *res;
+	zend_reference   *ref;
+	zend_ast_ref     *ast;
+	zval             *zv;
+	void             *ptr;
+	zend_class_entry *ce;
+	zend_function    *func;
+	struct {
+		uint32_t w1;
+		uint32_t w2;
+	} ww;
+} zend_value;
