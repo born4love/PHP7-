@@ -36,8 +36,9 @@ typedef union _znode_op {
 操作数类型定义
 **/
 // file : zend_compile.h
-#define IS_CONST    (1<<0)  // 1
-#define IS_TMP_VAR  (1<<1)  // 2
-#define IS_VAR      (1<<2)  // 4
-#define IS_UNUSED   (1<<3)  // 8
-#define IS_CV       (1<<4)  // 16
+#define IS_CONST    (1<<0)  // 1  常量，字面量 分配在只读内存区域
+#define IS_TMP_VAR  (1<<1)  // 2  中间值、临时变量
+#define IS_VAR      (1<<2)  // 4  函数返回值，非显示定义的PHP变量
+#define IS_UNUSED   (1<<3)  // 8  操作数没有被使用
+#define IS_CV       (1<<4)  // 16 脚本中$定义的变量
+#define EXT_TYPE_UNUSED (1<<5)  // 32 result_type 使用的类型，表示有返回值但是没有使用
