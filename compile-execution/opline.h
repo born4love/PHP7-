@@ -31,3 +31,13 @@ typedef union _znode_op {
   uint32_t  opline_num;
   uint32_t  jmp_offset;
 } znode_op;
+
+/**
+操作数类型定义
+**/
+// file : zend_compile.h
+#define IS_CONST    (1<<0)  // 1
+#define IS_TMP_VAR  (1<<1)  // 2
+#define IS_VAR      (1<<2)  // 4
+#define IS_UNUSED   (1<<3)  // 8
+#define IS_CV       (1<<4)  // 16
