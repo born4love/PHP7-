@@ -22,3 +22,9 @@ struct _zend_execute_data {
   // 就是zend_op_array->literals
   zval              *literals;
 }
+
+/**
+zend_execute_data还有一个重要的组成部分：动态变量区。
+CV变量、临时变量按照编号依次分配在zend_execute_data结构的末尾，
+根据具体的CV变量、临时变量数（即zend_op_array->last_var和zend_op_array->T）确定内存的大小。
+*/
