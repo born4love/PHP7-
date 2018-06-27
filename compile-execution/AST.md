@@ -15,8 +15,8 @@ typedef struct _zend_ast  zend_ast;
 struct _zend_ast {
   zend_ast_kind kind; // 节点类型
   zend_ast_attr attr; // Additional attribute
-  unit32_t  lineno; // 行号
-  zend_ast  *child[1]; // 子节点
+  unit32_t      lineno; // 行号
+  zend_ast      *child[1]; // 子节点
 }
 ```
 zend_ast最重要的两部分就是节点的类型和子节点child，不同kind类型zend_ast的子节点数是不同的，节点类型：
@@ -27,9 +27,9 @@ zend_ast最重要的两部分就是节点的类型和子节点child，不同kind
 typedef struct _zend_ast_list {
   zend_ast_kind kind;
   zend_ast_attr attr;
-  uint32_t  lineno;
-  uint32_t  children;
-  zend_ast  *child[1];
+  uint32_t      lineno;
+  uint32_t      children;
+  zend_ast      *child[1];
 }zend_ast_list;
 ```
 
@@ -38,7 +38,7 @@ typedef struct _zend_ast_list {
 typedef struct _zend_ast_zval {
   zend_ast_kind kind;
   zend_ast_attr attr;
-  zval  val;
+  zval          val;
 }zend_ast_zval;
 ```
 
