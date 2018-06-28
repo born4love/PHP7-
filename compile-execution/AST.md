@@ -20,7 +20,7 @@ struct _zend_ast {
 }
 ```
 zend_ast最重要的两部分就是节点的类型和子节点child，不同kind类型zend_ast的子节点数是不同的，节点类型：
-[_zend_ast_kind](https://github.com/php/php-src/blob/a394e1554c233c8ff6d6ab5d33ab79457b59522a/Zend/zend_ast.h#L36)
+[_zend_ast_kind](https://github.com/deanisty/php-src/blob/a394e1554c233c8ff6d6ab5d33ab79457b59522a/Zend/zend_ast.h#L36)
 
 ####  list节点
 ```c
