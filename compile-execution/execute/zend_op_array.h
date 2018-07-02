@@ -3,7 +3,7 @@ opline是编译生成的单条指令，所有的指令组合成了zend_op_array
 除了指令集合，zend_op_array保存了很多编译生成的关键数据，比如字面量存储区就在zend_op_array中。
 对于ZendVM而言，zend_op_array就是可执行数据，每个PHP脚本都会被编译未独立的zend_op_array结构。
 */
-// file: zend_compile.h
+// file: [zend_compile.h](https://github.com/deanisty/php-src/blob/a394e1554c233c8ff6d6ab5d33ab79457b59522a/Zend/zend_compile.h#L366)
 struct _zend_op_array{
   // common是普通函数或类成员方法对应的opcodes快速访问时使用的字段，后面分析PHP函数实现时会详细讲
   ...
