@@ -1,3 +1,4 @@
+// file : https://github.com/deanisty/php-src/blob/a394e1554c233c8ff6d6ab5d33ab79457b59522a/Zend/zend_compile.h#L461
 typedef struct _zend_execute_data zend_execute_data;
 /**
 ZendVM执行opcode指令前，首先会根据zend_op_array信息分配一个zend_execute_data结构，这个结构用来保存运行时信息，
