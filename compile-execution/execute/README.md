@@ -7,7 +7,9 @@ ZEND_API void zend_execute(zend_op_array *op_array, zval *return_value)
   ...
   // 分配zend_execute_data
   execute_data = zend_vm_stack_push_call_frame(ZEND_CALL_TOP_CODE,
-    (zend_function*)op_array, 0, zend_get_called_scope(EG(current_execute_data)), zend_get_this_object(EG(current_execute_data)));
+    (zend_function*)op_array, 0, zend_get_called_scope(EG(current_execute_data)), 
+    zend_get_this_object(EG(current_execute_data))
+  );
     ...
   // execute_data->prev_execute_data = EG(current_execute_data)
   EX(prev_execute_data) = EG(current_execute_data);
@@ -20,8 +22,84 @@ ZEND_API void zend_execute(zend_op_array *op_array, zval *return_value)
 ```
 
 #### 分配zend_execute_data
-  通过zend_vm_stack_push_call_frame()方法分配一块用于当前作用域的内存空间，也就是zend_execute_data,分配时会根据zend_op_array->last_var、zend_op_array->T计算出动态变量区的内存大小，随zend_execute_data一起分配。
-  在分配zend_execute_data时，传入了一个ZEND_CALL_TOP_CODE参数，这个值是用来标识执行器的调用类型的，因为
+  通过zend_vm_stack_push_call_frame()方法分配一块用于当前作用域的内存空间，也就是zend_execute_data,分配时会根据zend_op_array->last_var、           zend_op_array->T计算出动态变量区的内存大小，随zend_execute_data一起分配。
+  在分配zend_execute_data时，传入了一个ZEND_CALL_TOP_CODE参数，这个值是用来标识执行器的调用类型的，因为PHP主代码执行、调用用户自定义函数、
+  调用内部函数、include/require/eval的执行流程都是类似的，都会分配zend_execute_data，因此，zend_execute_data通过This这个成员，将调用类型
+  保存下来，This类型是zval，具体保存在This.u1.v.reserved中。
+```c
+typedef enum _zend_call_kind {
+  ZEND_CALL_NESTED_FUNCTION,  /* 用户自定义函数 */
+  ZEND_CALL_NESTED_CODE,      /* include/require/eval */
+  ZEND_CALL_TOP_FUNCTION,     /* 调用内部函数 */
+  ZEND_CALL_TOP_CODE,         /* 调用主脚本 */
+}zend_call_kind;
+```
 #### 初始化zend_execute_data
+这一步主要是初始化zend_execute_data中的一些成员，比如opline、return_value。另外还有一个比较重要的操作：zend_attach_symbol_table(),这是
+一个哈希表，用于存储全局变量。需要注意的是，主代码中所有CV变量都是全局变量，尽管这些变量对于主代码而言是局部变量，但是对于其他函数，它们就是
+全局变量，可以在函数中通过global关键字访问。
+```c
+// file: zend_execute.c
+static zend_always_inline void i_init_execute_data(zend_execute_data *execute_data, zend_op_array *op_array, zval *return_value)
+{
+  EX(opline) = op_array->opcodes;
+  EX(call) = NULL;
+  EX(return_value) = return_value;
+  
+  if(UNEXPECTED(EX(symbol_table) != NULL)) {
+    ...
+    // 添加全局变量
+    zend_attach_symbol_table(execute_data);
+  }else {
+    ...
+  }
+  EX_LOAD_RUN_TIME_CACHE(op_array);
+  EX_LOAD_LITERALS(op_array);
+  
+  EG(current_execute_data) = execute_data;
+  ZEND_VM_INTERRUPT_CHECK();
+}
+```
+经过这一步的处理后，zend_execute_data->opline指向了第一条指令，同时将zend_execute_data->literals指向了zend_op_array->literals，便于快速
+访问，完成这些设置之后，最后将EG(current_execute_data)指向zend_execute_data。现在，执行前的准备工作都已经完成了。
 #### 执行
+ZendVM的执行调度器就是一个while循环，在这个循环中依次调用Opline指令的handler，然后依据handler的返回决定下一步的动作。执行调度器为
+zend_execute_ex，这是函数指针，默认为execute_ex()，可以通过扩展进行覆盖。GCC低于4.8的情况下，这个调度器展开后如下：
+```c
+ZEND_API void execute_ex(zend_execute_data *ex)
+{
+  zend_execute_data *execute_data = ex;
+  while(1) {
+    int ret;
+    // 执行当前指令
+    if(UNEXPECTED((ret = ((opcode_handler_t)execute_data->opline->handler)(execute_data)) != 0)) {
+      if(EXPECTED(ret > 0)){
+        execute_data = EG(current_execute_data);
+      }else{
+        return;
+      }
+    }
+  }
+}
+```
+执行的第一条opcode为ZEND_ASSIGN，即$a = 123，该指令由ZEND_ASSIGN_SPEC_CV_CONST_HANDLER()处理，首先根据操作数1,2取出赋值的变量与变量值，其中
+变量值为CONST类型，保存在literals中，通过EX_CONSTANT(opline->op2)获取它的值。$a为CV变量，分配在Zend_execute_data动态变量区，通过
+_get_zval_ptr_cv_undef_BP_VAR_W()取到这个变量的地址，然后将变量值复制到CV变量即可。
+```c
+static int ZEND_ASSIGN_SPEC_CV_CONST_HANDLER(zend_execute_data *execute_data)
+{
+  // USE OPLINE
+  const zend_op *opline = execute_data->opline;
+  ...
+  value = EX_CONSTANT(opline->op2);
+  variable_ptr = _get_zval_ptr_cv_undef_BP_VAR_W(execute_data, opline->op1.var);
+  ...
+  // 赋值复制
+  value = zend_assign_to_variable(variable_ptr, value, IS_CONST);
+  ...
+  // ZEND_VM_NEXT_OPCODE_CHECK_EXCEPTION()
+  excute_data->opline = execute_data->opline + 1;
+  return 0;
+}
+```
 #### 释放zend_execute_data
