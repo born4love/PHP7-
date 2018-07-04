@@ -85,6 +85,7 @@ ZEND_API void execute_ex(zend_execute_data *ex)
 执行的第一条opcode为ZEND_ASSIGN，即$a = 123，该指令由ZEND_ASSIGN_SPEC_CV_CONST_HANDLER()处理，首先根据操作数1,2取出赋值的变量与变量值，其中
 变量值为CONST类型，保存在literals中，通过EX_CONSTANT(opline->op2)获取它的值。$a为CV变量，分配在Zend_execute_data动态变量区，通过
 _get_zval_ptr_cv_undef_BP_VAR_W()取到这个变量的地址，然后将变量值复制到CV变量即可。
+
 ```c
 static int ZEND_ASSIGN_SPEC_CV_CONST_HANDLER(zend_execute_data *execute_data)
 {
@@ -101,5 +102,52 @@ static int ZEND_ASSIGN_SPEC_CV_CONST_HANDLER(zend_execute_data *execute_data)
   excute_data->opline = execute_data->opline + 1;
   return 0;
 }
+
 ```
+  执行完成后会更新opline,指向下一条指令，然后返回调度器。这里会有几个不同的动作，调度器根据不同的返回值决定下一个动作。
+  ```c
+  #define ZEND_VM_CONTINUE()  return 0
+  #define ZEND_VM_ENTER() return 1
+  #define ZEND_VM_LEAVE() return 2
+  #define ZEND_VM_RETURN() return -1
+  ```
+  
+    ZEND_VM_CONTINUE()表示继续执行下一条opcode；ZEND_VM_ENTER()/ZEND_VM_LEAVE()是调用函数时的动作，普通模式下ZEND_VM_ENTER()实际上就是返回1，
+  然后execute_ex()会将execute_data切换到被调用函数的结构上。对应的，在函数调用完成后，ZEND_VM_LEAVE()会return 2，再将execute_data切换至原来的
+  结构：ZEND_VM_RETURN()表示执行完成，返回-1给execute_ex(),比如exit,这时候execute_ex()会退出执行。
+    执行流程的最后一条指令是ZEND_RETURN，这条执行会有几个非常关键的处理，1)设置返回值，zend_execute()执行时传入了一个return_value，这个过程相当
+  于赋值，ZendVM会把返回值赋值给这个地址；2)清理动态变量区，对zend_execute_data上的CV、VAR、TMP_VAR进行清理，需要注意的是，这里的清理不包括全局
+  变量，也就是主脚本、include的调用并不会在这一步清理全局变量（即主代码里的“局部变量”）进行清理；3)切换至调用前的zend_execute_data，相当于汇编中
+  的ret指令的作用。
+  ```c
+  static ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL zend_leave_helper_SPEC(ZEND_OPCODE_HANDLER_ARGS)
+  {
+    zend_execute_data *old_execute_data;
+    // 获取zend_execute_data的call_info
+    uint32_t call_info = EX_CALL_INFO();
+    
+    // 调用用户自定义函数
+    if(EXPECTED(ZEND_CALL_KIND_EX(call_info)) == ZEND_CALL_NESTED_FUCTION)) {
+      ...
+    }
+    if((EXPECTED(ZEND_CALL_KIND_EX(call_info) & ZEND_CALL_TOP) == 0)) {
+      ...
+    } else {
+      if (ZEND_CALL_KIND_EX(call_info) == ZEND_CALL_TOP_FUNCTION) {
+        ...
+      } else /* if (call_kind == ZEND_CALL_TOP_CODE) */ {
+        zend_array *symbol_table = EX(symbol_table);
+        
+        zend_detach_symbol_table(execute_data);
+        old_execute_data = EX(prev_execute_data);
+        ...
+        // 还原 zend_execute_data
+        EG(current_execute_data) = EX(prev_execute_data);
+      }
+      ZEND_VM_RETURN();
+    }
+  }
+  ```
 #### 释放zend_execute_data
+  在所有的指令执行完成后，将调用zend_vm_stack_free_call_frame()释放zend_execute_data.为了避免频繁的申请、释放zend_execute_data，这里会对
+  zend_execute_data进行缓存，释放时并不是立即归还底层的内存系统（即Zend内存池），而是暂时保留，下次使用时直接分配，缓存位置为EG(vm_stack)。
