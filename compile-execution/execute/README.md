@@ -112,7 +112,7 @@ static int ZEND_ASSIGN_SPEC_CV_CONST_HANDLER(zend_execute_data *execute_data)
   #define ZEND_VM_RETURN() return -1
   ```
   
-    ZEND_VM_CONTINUE()表示继续执行下一条opcode；ZEND_VM_ENTER()/ZEND_VM_LEAVE()是调用函数时的动作，普通模式下ZEND_VM_ENTER()实际上就是返回1，
+  ZEND_VM_CONTINUE()表示继续执行下一条opcode；ZEND_VM_ENTER()/ZEND_VM_LEAVE()是调用函数时的动作，普通模式下ZEND_VM_ENTER()实际上就是返回1，
   然后execute_ex()会将execute_data切换到被调用函数的结构上。对应的，在函数调用完成后，ZEND_VM_LEAVE()会return 2，再将execute_data切换至原来的
   结构：ZEND_VM_RETURN()表示执行完成，返回-1给execute_ex(),比如exit,这时候execute_ex()会退出执行。
     执行流程的最后一条指令是ZEND_RETURN，这条执行会有几个非常关键的处理，1)设置返回值，zend_execute()执行时传入了一个return_value，这个过程相当
