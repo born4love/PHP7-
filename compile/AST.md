@@ -50,4 +50,4 @@ typedef struct _zend_ast_zval {
   * 词法规则文件：https://github.com/deanisty/php-src/blob/master/Zend/zend_language_scanner.l
   * 语法规则文件：https://github.com/deanisty/php-src/blob/master/Zend/zend_language_parser.y
   
-  ![image](https://github.com/born4love/PHP7-internal-dissect/blob/master/compile-execution/compile/PHP-compile.png)
+  ![image](https://github.com/born4love/PHP7-internal-dissect/blob/master/images/PHP-compile.png)

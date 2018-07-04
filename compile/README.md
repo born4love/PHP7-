@@ -4,7 +4,7 @@
 
 zend_execute_data和zend_op_array的关系：
 
-![image](https://github.com/born4love/PHP7-internal-dissect/blob/master/compile-execution/zend_execute_data.png)
+![image](https://github.com/born4love/PHP7-internal-dissect/blob/master/images/zend_execute_data.png)
 
 执行
 ------------------------------------------------------------
