@@ -9,3 +9,7 @@ persistent_compile_file()进行编译。此时，Opcache首先检查是否有该
 将编译后的结果缓存下来，供下次使用。流程如下图
 
 ![image](https://github.com/deanisty/PHP7-internal-dissect/blob/master/images/opcache.png)
+
+1. 初始化
+2. 缓存的获取过程
+3. 缓存的生成
