@@ -65,7 +65,19 @@ static uint prime_number[] =
 
 2. 缓存的获取过程
 编译一个脚本调用的是zend_compile_file(),此时将由Opcache的persistent_compile_file()处理，首先介绍Opcache中比较重要的几个配置：
-* opcache.validate_timestamps:
-* opcache.revalidate_path:
+* opcache.validate_timestamps:是否开启缓存有效期验证，默认值为1，表示开启，开启之后每隔opcache.revalidate_freq秒检查一次文件是否更新了；如果不开
+启则不会检查，脚本修改了只能重启服务才能生效。opache.revalidate_freq默认为2s.
+* opcache.revalidate_path:验证文件路径，默认值为0，表示关闭。默认情况下，opcodes缓存并不是通过完整的文件路径名称进行索引的，而是通过一个根据文件名
+、当前所在目录、include_path生成的key，因此当编译的文件实际已经不存在了但是缓存还在的时候，就会使用已经失效的缓存，如果开启这个选项，将通过完整的文
+件路径检索缓存，并且检查文件是否存在，而不再使用那个key。
+
+```c
+zend_op_array *persistent_compile_file(zend_file_handle *file_handle, int type)
+{
+  zend_persistent_script *persistent_script = NULL;
+  ...
+  
+}
+```
 
 3. 缓存的生成
