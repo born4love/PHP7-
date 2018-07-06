@@ -76,7 +76,59 @@ zend_op_array *persistent_compile_file(zend_file_handle *file_handle, int type)
 {
   zend_persistent_script *persistent_script = NULL;
   ...
-  
+  //1) 获取缓存
+    // 如果没有开启opcache.revalidate_path，则先根据key获取缓存
+    if(!ZCG(accel_directives).revalidate_path) {
+      key = accel_make_persistent_key(file_handle->filename, strlen(file_handle->filename), &key_length);
+      if(!key) {
+        return accelerator_orig_compile_file(file_handle, type);
+      }
+      // 获取缓存
+      persistent_script = zend_accel_hash_str_find(&ZCSG(hash), key, key_length);
+    }
+    if(!persistent_script) {
+      // 如果取不到缓存或开启了opcache.revalidate_path，则根据实际的文件路径查找缓存
+      ...
+      bucket = zend_accel_hash_find_entry(&ZCSG(hash), file_handle->opened_path);
+      if(bucket) {
+        persitent_scritp = (zend_persistent_script *)bucket->data;
+        ...
+      }
+    }
+    ...
+    //2) 检查脚本是否更新过，开启opcache.validate_timestamps时
+    if(persistent_script && ZCG(accel_directives).validate_timestamps) {
+      // 每隔opcache.revalidate_freq秒检查一次文件是否更新，如果更新了则缓存失效
+      if(validate_timestamp_and_record(persistent_script, file_handler) == FAILURE) 
+      {
+        persistent_script = NULL;
+      }
+    }
+    // 校验缓存数据是否合法：根据Adler-32算法，类似crc的一个算法
+    if(persistent_script && ZCG(accel_directives).consistency_checks && persistent_script->dynamic_members.hits%ZCG(accel_directives).consistency_checks == 0) {
+      unsigned int checksum = zend_accel_script_checksum(persistent_script);
+      // 检查校验和
+      if(checksum != persistent_script->dynamic_members.checksum) {
+        ...
+        persistent_script = NULL;
+      }
+    }
+    ...
+    //3) 返回缓存或重新编译
+    if(!persistent_script) { // 无缓存可用
+      ...
+      // 调用ZendVM默认的编译器进行编译
+      persistent_script = opcache_compile_file(file_handler, type, key, key ? key_length : 0, &op_array);
+      if(persistent_script) {
+        // 将编译结果缓存
+        persistent_script = cache_script_in_shared_memory(persistent_script, key, key ? key_length : 0, &from_shared_memory);
+      }
+      ...
+    } else { // 有缓存
+      ...
+    }
+    ...
+    return zend_accel_load_script(persistent_script, from_shared_memory);
 }
 ```
 
