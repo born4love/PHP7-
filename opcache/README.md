@@ -192,3 +192,6 @@ static zend_persistent_script *opcache_compile_file(zend_file_handle *file_handl
 
 此时生成的zend_persistent_script并不在共享内存上，调用cache_script_in_shared_memory()进行缓存时会重新复制到共享内存上，以便供其他进程使用。最终
 保存到共享内存上的数据有：zend_persistent_script结构、脚本路径名称、脚本中定义的类、脚本中定义的函数、脚本的zend_op_array，内存结构如图。
+
+![image](https://github.com/deanisty/PHP7-internal-dissect/blob/master/images/opcache1.png)
+
