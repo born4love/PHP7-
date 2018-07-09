@@ -133,3 +133,62 @@ zend_op_array *persistent_compile_file(zend_file_handle *file_handle, int type)
 ```
 
 3. 缓存的生成
+  如果没有缓存或者缓存失效了，则需要重新编译并缓存结果，其中编译过程由opcache_compile_file()完成，编译完成后调用cache_script_in_shared_memory()
+进行缓存。首先看一下Opcache中缓存的结构zend_persistent_script，缓存的数据并不是仅仅是zend_op_array，还有函数、类的符号表:
+```c
+typedef struct _zend_persistent_script {
+  zend_string *full_path; // 完整的脚本文件路径
+  zend_op_array main_op_array; // 编译生成的zend_op_array
+  HashTable function_table;
+  HashTable class_table;
+  ...
+  accel_time_t timestamp; // 脚本更新时间
+  zend_bool corrupted;
+  zend_bool is_phar;
+  
+  void *mem; // zend_persistent_script内存的地址
+  size_t size; // 共享内存的大小
+  ...
+  struct zend_persistent_script_dynamic_members {
+    time_t last_used; // 上次使用时间
+    zend_ulong hits; // 缓存命中次数
+    unsigned int memory_consumption;
+    unsigned int checksum; // 缓存的校验和
+    time_t revalidate;
+  } dynamic_members;
+} zend_persistent_script;
+```
+
+PHP脚本在调用compile_file()编译完成后，将分配一个zend_persistent_script结构，然后将编译生成的数据转移到zend_persistent_script结构中。
+
+```c
+static zend_persistent_script *opcache_compile_file(zend_file_handle *file_handle, int type, char *key, unsigned int key_length, zend_op_array **op_array_p) {
+  ...
+  // 分配一个新的zend_persistent_script结构
+  new_persistent_script = create_persistent_script();
+  ...
+  // 编译前替换CG(function_table)、EG(class_table)
+  CG(function_table) = &ZCG(function_table);
+  EG(class_table) = CG(class_table) = &new_persistent_script->class_table;
+  ZVAL_UNDEF(&EG(user_error_handler));
+  ...
+  zend_try {
+    ...
+    // 调用compile_file()编译
+    op_array = *op_array_p = accelerator_orig_compile_file(file_handle, type);
+  } zend_catch {
+  
+  }
+  ...
+  // 将函数符号表转移到new_persistent_script->function_table
+  zend_accel_move_user_functions(&ZCG(function_table), &new_persistent_script->function_table);
+  new_persistent_script->main_op_array = *op_array;
+  
+  efree(op_array);
+  ...
+  return new_persistent_script;
+}
+```
+
+此时生成的zend_persistent_script并不在共享内存上，调用cache_script_in_shared_memory()进行缓存时会重新复制到共享内存上，以便供其他进程使用。最终
+保存到共享内存上的数据有：zend_persistent_script结构、脚本路径名称、脚本中定义的类、脚本中定义的函数、脚本的zend_op_array，内存结构如图。
