@@ -195,3 +195,46 @@ static zend_persistent_script *opcache_compile_file(zend_file_handle *file_handl
 
 ![image](https://github.com/deanisty/PHP7-internal-dissect/blob/master/images/opcache1.png)
 
+```c
+// 缓存到共享内存
+static zend_persistent_script *cache_script_in_shared_memory(zend_persistent_script *new_persistent_script, char *key, unsigned int key_length, int *from_shared_memory)
+{
+  ...
+  // 加锁
+  zend_shared_alloc_lock();
+  // 检查缓存空间是否够用
+  if(zend_accel_hash_is_full(&ZCSG(hash))) {
+    ...
+  }
+  // 检查缓存是否存在，因为在其他进程中可能在这之前提前生成缓存了，之前的处理过程并没有加锁
+  bucket = zend_accel_hash_find_entry(&ZCSG(hash), new_persistent_script->full_path);
+  if(bucket) { // 存在则不需要缓存了
+    ...
+    if(!existing_persistent_script->corrupted) {
+      ...
+      return new_persistent_script;
+    }
+  }
+  // 计算所需内存
+  memory_used = zend_accel_script_persistent_calc(new_persistent_script, key, key_length);
+  // 分配共享内存
+  ZCG(mem) = zend_shared_alloc(memory_used);
+  ...
+  // 将new_persistent_script拷贝到共享内存中
+  new_persistent_script = zend_accel_script_persistent(new_persistent_script, &key, key_length);
+  ...
+  // 计算校验和
+  new_persistent_script->dynamic_members.checksum = zend_accel_script_checksum(new_persistent_script);
+  // 插入缓存索引表，即zend_accel_shared_globals->hash
+  bucket = zend_accel_hash_update(&ZCSG(hash), ZSTR_VAL(new_persistent_script->full_path), ZSTR_LEN(new_persistent_script->full_path), 0, new_persistent_script);
+  if(bucket) {
+    // 这里还会以那个特殊的key插入hash
+    if(zend_accel_hash_update(&ZCSG(hash), key, key_length, 1, bucket)) {
+      ...
+    }
+  }
+  ...
+  return new_persistent_script;
+}
+```
+
