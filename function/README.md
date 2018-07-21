@@ -45,6 +45,21 @@
 	struct _zend_module_entry *module;
 	void *reserved[ZEND_MAX_RESERVED_RESOURCES];
 } zend_internal_function;
+
+typedef struct _zend_arg_info {
+	// 参数名
+	zend_string *name;
+	// 如果参数/返回值是类，这里是类名
+	zend_string *class_name;
+	// 指定的参数类型，比如array $param_1
+	zend_uchar type_hint;
+	// 是否引用参数，参数前&
+	zend_uchar pass_by_reference;
+	// 是否允许为空
+	zend_bool allow_null;
+	// 是否可变参数
+	zend_bool is_variadic
+} zend_arg_info;
   ```
   
   zend_function结构中还有两个特殊的成员：type、common,他们都是zend_op_array、zend_internal_function接口中共有成员，用户快速获取函数的基本信息。type用于区分函数类型，common则是函数的名称、参数等信息，对于用户自定义函数而言，zend_function.type实际上取的是zend_function.op_array.type，zend_function.common.xxx等价于zend_function.op_array.xxx。
