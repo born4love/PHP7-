@@ -2,23 +2,37 @@
 
 类的结构定义
 ```c
+// zend_types.h
+typedef struct _zend_class_entry     zend_class_entry;
 // zend.h
 struct _zend_class_entry {
+	// 类的类型：内部类 ZEND_INTERNAL_CLASS(1)、用户自定义类 ZEND_USER_CLASS(2)
 	char type;
+	// 类名，PHP类不区分大小写，统一为小写
 	zend_string *name;
+	// 父类
 	struct _zend_class_entry *parent;
+	// 引用 ??
 	int refcount;
+	// 类掩码，入普通类、抽奖类、接口，以及别的含义
 	uint32_t ce_flags;
-
+	// 普通属性数，包括 public private
 	int default_properties_count;
+	// 静态属性数
 	int default_static_members_count;
+	// 普通属性值数组
 	zval *default_properties_table;
+	// 静态属性值数组
 	zval *default_static_members_table;
 	zval *static_members_table;
+	// 成员方法符号表
 	HashTable function_table;
+	// 成员属性基本信息哈希表，key为成员名，value为zend_property_info
 	HashTable properties_info;
+	// 常量符号表
 	HashTable constants_table;
 
+	// 构造函数
 	union _zend_function *constructor;
 	union _zend_function *destructor;
 	union _zend_function *clone;
