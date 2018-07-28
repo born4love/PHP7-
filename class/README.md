@@ -34,6 +34,7 @@ struct _zend_class_entry {
 
 	// 构造函数
 	union _zend_function *constructor;
+	// 析构函数
 	union _zend_function *destructor;
 	union _zend_function *clone;
 	union _zend_function *__get;
@@ -59,14 +60,17 @@ struct _zend_class_entry {
 	int (*serialize)(zval *object, unsigned char **buffer, size_t *buf_len, zend_serialize_data *data);
 	int (*unserialize)(zval *object, zend_class_entry *ce, const unsigned char *buf, size_t buf_len, zend_unserialize_data *data);
 
+	// 实现的接口数
 	uint32_t num_interfaces;
 	uint32_t num_traits;
+	// 实现的接口
 	zend_class_entry **interfaces;
 
 	zend_class_entry **traits;
 	zend_trait_alias **trait_aliases;
 	zend_trait_precedence **trait_precedences;
 
+	// 类所在文件、起始行号、所属模块等信息
 	union {
 		struct {
 			zend_string *filename;
@@ -81,3 +85,5 @@ struct _zend_class_entry {
 	} info;
 };
 ```
+
+PHP脚本中定义的类，在编译阶段将被解析到相应的成员下，例如成员方法会按照函数的编译规则编译为zend_function，然后注册到zend_class_entry->function_table中。类编译完成后，将想函数那样注册到一个全局符号表中：EG(class_table)。使用时根据类名到该符号表中索引，EG(class_table)保存着全部的类，包括用户自定义类和内部类。
