@@ -10,6 +10,7 @@
     struct {
       zend_uchar type; /*never used*/
       zend_uchar arg_flags[3];
+      // 方法标识：final/static/abstract、private/public/protected
       uint32_t fn_flags;
       zend_string *function_name;
       // 成员方法所属类，面向对象实现中用到
