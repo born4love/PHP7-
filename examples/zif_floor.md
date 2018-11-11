@@ -21,7 +21,8 @@ echo $fa;
 #### 相关知识点
 
 * zend_execute_data https://github.com/deanisty/PHP7-internal-dissect/blob/master/_datastructure/zend_execute_data.h
-* zend_string     https://github.com/deanisty/PHP7-internal-dissect/blob/master/_datastructure/zend_string.md
+* zend_string       https://github.com/deanisty/PHP7-internal-dissect/blob/master/_datastructure/zend_string.md
+* php float types   http://php.net/manual/en/language.types.float.php
 
 ## GDB
 
