@@ -7,7 +7,7 @@ ZendVM执行opcode指令前，首先会根据zend_op_array信息分配一个zend
 struct _zend_execute_data {
   // 当前执行中的指令，等价于eip的作用，执行之初opline指向zend_op_array->opcodes指令集中的第一条指令，当执行完当前指令后，该值会指向下一条指令
   const zend_op     *opline;
-  // 当前执行的上下文 ???
+  // 即将被执行的上下文
   zend_execute_data *call;
   // 返回值 执行完之后会把返回值设置到这个地址
   zval              *return_value;
