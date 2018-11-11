@@ -261,12 +261,38 @@ $22 = (zend_string *) 0xc689b0
 type = void (*)(zend_execute_data *, zval *)
 
 # zif_handler 的类型是一个函数指针，返回任意类型，接收两个参数，一个是执行的上下文信息，一个是返回值地址
-
+# 它指向了函数 zif_floor
 ```
 
+为了看清楚 zif_floor 内部进行了哪些操作，我们设置一个断点
 
+```shell
+(gdb) b zif_floor 
+Breakpoint 2 at 0x5c0a1b: file /usr/local/php7/php-src/ext/standard/math.c, line 340.
+(gdb) n
 
+Breakpoint 2, zif_floor (execute_data=0x7ffff661e0e0, return_value=0x7ffff661e0b0) at /usr/local/php7/php-src/ext/standard/math.c:340
+340		ZEND_PARSE_PARAMETERS_START(1, 1)
+(gdb) 
+```
 
+查看当前栈帧
 
+```shell
+// info frame
+(gdb) info f
+Stack level 0, frame at 0x7fffffffac90:
+ rip = 0x5c0a1b in zif_floor (/usr/local/php7/php-src/ext/standard/math.c:340); saved rip 0x73495c
+ called by frame at 0x7ffffffface0
+ source language c.
+ Arglist at 0x7fffffffac80, args: execute_data=0x7ffff661e0e0, return_value=0x7ffff661e0b0
+ Locals at 0x7fffffffac80, Previous frame's sp is 0x7fffffffac90
+ Saved registers:
+  rbp at 0x7fffffffac80, rip at 0x7fffffffac88
+```
 
+查看 zif_floor 参数
 
+```shell
+
+```
