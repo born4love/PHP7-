@@ -81,4 +81,9 @@ HashTable 即哈希表。是PHP中 array() 类型的内部实现结构，也是�
 PHP7中 HashTable 有非常大的变化， HashTable 结构的大小从 72B 减小到 56B，同时，数组元素 Bucket 结构也从 72B 减小到了 32B。
 
 #### 执行器
+execute_data、opline 采用寄存器变量存储，执行器的调度函数为 execute_ex() ，这个函数负责执行PHP代码编译生成的 ZendVM 指令。在执行期间会频繁用到
+execute_data、opline 两个变量，在PHP5.x 中，这两个变量是由 execute_ex() 通过参数传递给各指令 handler 的，在PHP7中不再采用传参的方式，而是将
+execute_data、opline 通过寄存器存储，避免了传参导致的频繁出入栈操作，同时，寄存器的访问速度比内存更快，这个优化使PHP的性能有了5%左右的提升。
+
+#### 新的参数解析方式
 
