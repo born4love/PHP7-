@@ -1,19 +1,24 @@
 ## PHP_FUNCTION(floor)
 
->php --version : PHP 7.3.0-dev
+>php --version : PHP 7.0.12
 
 >位置：php-src/ext/standard/math.c
 
 ```PHP
 <?php
-// php7/test/test_floor.php
+/data/php7/test/test.php
 
 $a = 100 * 19.9;
+
+var_dump($a);
+
 $fa = floor($a);
 
-echo $fa;
+var_dump($fa);
 
-// 1989
+// output:
+// float(1990)
+// float(1989)
 ```
 
 本文档致力于研究这个问题
@@ -26,35 +31,33 @@ echo $fa;
 
 ## GDB
 
-#### 启动 gdb 
-
-```shell
-gdb bin/php
-```
-
 #### 寻找合适位置设置断点
 
 ```shell
-hostname-xxx:/usr/local/php7$bin/php -dvld.active=1 test/test_floor.php
+root@56d745620b72:/data/php7/test# php -dvld.active=1 test.php
 Finding entry points
 Branch analysis from position: 0
 1 jumps found. (Code = 62) Position 1 = -2
-filename:       /usr/local/php7/test/test_floor.php
+filename:       /data/php7/test/test.php
 function name:  (null)
-number of ops:  8
+number of ops:  12
 compiled vars:  !0 = $a, !1 = $fa
 line     #* E I O op                           fetch          ext  return  operands
 -------------------------------------------------------------------------------------
    3     0  E >   ASSIGN                                                   !0, 1990
-   5     1        INIT_FCALL                                               'floor'
+   4     1        INIT_FCALL                                               'var_dump'
          2        SEND_VAR                                                 !0
-         3        DO_ICALL                                         $3      
-         4        ASSIGN                                                   !1, $3
-   7     5        CONCAT                                           ~5      !1, '%0A'
-         6        ECHO                                                     ~5
-   8     7      > RETURN                                                   1
+         3        DO_ICALL                                                 
+   5     4        INIT_FCALL                                               'floor'
+         5        SEND_VAR                                                 !0
+         6        DO_ICALL                                         $4      
+         7        ASSIGN                                                   !1, $4
+   6     8        INIT_FCALL                                               'var_dump'
+         9        SEND_VAR                                                 !1
+        10        DO_ICALL                                                 
+        11      > RETURN                                                   1
 
-branch: #  0; line:     3-    8; sop:     0; eop:     7; out0:  -2
+branch: #  0; line:     3-    6; sop:     0; eop:    11; out0:  -2
 path #1: 0,
 ```
 
@@ -295,5 +298,24 @@ Stack level 0, frame at 0x7fffffffac90:
 查看 zif_floor 参数
 
 ```shell
-
+(gdb) n
+352			Z_PARAM_ZVAL(value)
+(gdb) p value
+$1 = (zval *) 0x0
+(gdb) n
+353		ZEND_PARSE_PARAMETERS_END();
+(gdb) p value
+$2 = (zval *) 0x7ffff7014160
+(gdb) p *value
+$3 = {value = {lval = 4656466928003448831, dval = 1989.9999999999998, counted = 0x409f17ffffffffff, str = 0x409f17ffffffffff, arr = 0x409f17ffffffffff, obj = 0x409f17ffffffffff, res = 0x409f17ffffffffff, ref = 0x409f17ffffffffff, 
+    ast = 0x409f17ffffffffff, zv = 0x409f17ffffffffff, ptr = 0x409f17ffffffffff, ce = 0x409f17ffffffffff, func = 0x409f17ffffffffff, ww = {w1 = 4294967295, w2 = 1084168191}}, u1 = {v = {type = 5 '\005', type_flags = 0 '\000', 
+      const_flags = 0 '\000', reserved = 0 '\000'}, type_info = 5}, u2 = {var_flags = 0, next = 0, cache_slot = 0, lineno = 0, num_args = 0, fe_pos = 0, fe_iter_idx = 0}}
+(gdb) 
 ```
+
+很遗憾，floor 函数接收唯一的参数 value ，而它是一个浮点型的值，所以在 zval 结构中使用 zval->value->dval 来存储，但是我们发现在 floor 函数真正处理
+之前入参的值已经是 `1989.9999999999998` 了，也就是说这个值已经不对了，因此，输出 1989 不是 floor 函数的问题。
+
+#### 查看编译过程
+
+
