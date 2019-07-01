@@ -130,9 +130,20 @@ static int32 tls_key;
 #endif
 ```
 
-这里增加了判断逻辑，分别针对 PTHREADS TSRM_ST TSRM_WIN32 BETHREADS 四种不同的线程支持情况，使用相应的系统调用函数定义 tsrm_tls_set() 和 tsrm_tls_get()方法.
+这里增加了判断逻辑，分别针对 PTHREADS、TSRM_ST、TSRM_WIN32、BETHREADS 四种不同的线程支持情况，使用相应的系统调用函数定义 tsrm_tls_set() 和 tsrm_tls_get()方法.
 以 pthread_setspecific为例，set方法将当前线程指定的值绑定到 tls_key 指定的键上，get 方法则是通过指定的key值取得这个值.
 
 参考 [pthread_setspecific doc](https://linux.die.net/man/3/pthread_getspecific)
 
+
+#### TSRM_API
+
+线程安全模块提供了一组 API 主要包括 
+
+* tsrm_startup 初始化线程安全模块
+* tsrm_shutdown 关闭线程安全模块
+* ts_allocate_id 分配新的资源id
+* allocate_new_resource 创建新的线程安全资源 
+
+理解了这组api就能够理解 PHP 的线程安全原理 ， 请移步 (ZTS api)(api.md)
 
