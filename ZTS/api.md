@@ -9,7 +9,7 @@
 // D:\projects\php-src\TSRM\TSRM.c
 ```
 
-#### 结构体
+##### 结构体
 
 ```C
 // 每个线程安全资源存储的结构体
@@ -76,7 +76,7 @@ TSRM_API int tsrm_startup(int expected_threads, int expected_resources, int debu
 	id_count=0;
   // 资源类型表 与资源表大小一致
 	resource_types_table_size = expected_resources;
-  // 资源类型表分配内存空间
+  // 资源类型表分配内存空间 并初始化
 	resource_types_table = (tsrm_resource_type *) calloc(resource_types_table_size, sizeof(tsrm_resource_type));
 	if (!resource_types_table) {
 		TSRM_ERROR((TSRM_ERROR_LEVEL_ERROR, "Unable to allocate resource types table"));
@@ -84,7 +84,7 @@ TSRM_API int tsrm_startup(int expected_threads, int expected_resources, int debu
 		tsrm_tls_table = NULL;
 		return 0;
 	}
-  // 初始化互斥锁 在生成新的资源id时使用 避免多个线程同时操作资源数量
+  // 初始化互斥锁 在生成新的资源id时使用 避免多个线程同时操作
 	tsmm_mutex = tsrm_mutex_alloc();
 
 	tsrm_new_thread_begin_handler = tsrm_new_thread_end_handler = NULL;
@@ -94,6 +94,7 @@ TSRM_API int tsrm_startup(int expected_threads, int expected_resources, int debu
 }
 ```
 
+##### ts_allocate_id
 
 ```C
 /* allocates a new thread-safe-resource id */
@@ -125,32 +126,39 @@ TSRM_API ts_rsrc_id ts_allocate_id(ts_rsrc_id *rsrc_id, size_t size, ts_allocate
 		resource_types_table_size = id_count;
 	}
   // TSRM_UNSHUFFLE_RSRC_ID 宏会将 rsrc_id 的值减一获得当前资源的id
-  // 并将当前新增的资源类型放入结构体中
+  // 保存资源类型 size:资源的大小 ctor:资源初始化函数 dtor:资源析构函数 done:资源是否使用完毕
 	resource_types_table[TSRM_UNSHUFFLE_RSRC_ID(*rsrc_id)].size = size;
 	resource_types_table[TSRM_UNSHUFFLE_RSRC_ID(*rsrc_id)].ctor = ctor;
 	resource_types_table[TSRM_UNSHUFFLE_RSRC_ID(*rsrc_id)].dtor = dtor;
 	resource_types_table[TSRM_UNSHUFFLE_RSRC_ID(*rsrc_id)].done = 0;
 
 	/* enlarge the arrays for the already active threads */
+	// 每个线程的资源表都为新增加的资源id创建内存空间
 	for (i=0; i<tsrm_tls_table_size; i++) {
+	        // 遍历资源表中所有条目
 		tsrm_tls_entry *p = tsrm_tls_table[i];
 
 		while (p) {
+		        // 当前资源数量小于资源总数
 			if (p->count < id_count) {
 				int j;
-
+				// 调整资源空间 如果不足则重新分配 保证内存连续
 				p->storage = (void *) realloc(p->storage, sizeof(void *)*id_count);
 				for (j=p->count; j<id_count; j++) {
+					// 每个资源分配size指定的内存空间 并调用对应的初始化函数初始化
 					p->storage[j] = (void *) malloc(resource_types_table[j].size);
 					if (resource_types_table[j].ctor) {
 						resource_types_table[j].ctor(p->storage[j]);
 					}
 				}
+				// 当前线程表的资源总量
 				p->count = id_count;
 			}
+			// 处理下一个线程资源表
 			p = p->next;
 		}
 	}
+	// 处理完成 释放锁
 	tsrm_mutex_unlock(tsmm_mutex);
 
 	TSRM_ERROR((TSRM_ERROR_LEVEL_CORE, "Successfully allocated new resource id %d", *rsrc_id));
@@ -158,6 +166,8 @@ TSRM_API ts_rsrc_id ts_allocate_id(ts_rsrc_id *rsrc_id, size_t size, ts_allocate
 }
 ```
 
+
+##### tsrm_shutdown
 
 ```C
 /* Shutdown TSRM (call once for the entire process) */
