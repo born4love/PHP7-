@@ -145,5 +145,7 @@ static int32 tls_key;
 * ts_allocate_id 分配新的资源id
 * allocate_new_resource 创建新的线程安全资源 
 
+// 定义位置 D:\projects\php-src\TSRM\TSRM.c
+
 理解了这组api就能够理解 PHP 的线程安全原理 ， 请移步 [ZTS api](api.md)
 
