@@ -1,4 +1,4 @@
-#### Zend Thread Safe
+#### ZTS(Zend Thread Safe)
 
 多线程环境下（在windows 环境或者使用多线程的 unix 操作系统环境下 apache等 web 服务器会运行在多线程模式下）全局变量防止冲突的解决方案。
 
@@ -145,5 +145,5 @@ static int32 tls_key;
 * ts_allocate_id 分配新的资源id
 * allocate_new_resource 创建新的线程安全资源 
 
-理解了这组api就能够理解 PHP 的线程安全原理 ， 请移步 (ZTS api)(api.md)
+理解了这组api就能够理解 PHP 的线程安全原理 ， 请移步 [ZTS api](api.md)
 
