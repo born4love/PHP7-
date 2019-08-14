@@ -394,6 +394,25 @@ s = php_gcvt(fp_num, precision, (*fmt=='H' || *fmt == 'k') ? '.' : LCONV_DECIMAL
 这个函数接收 fp_num 参数，根据精度值 precision 将其格式化为相应的字符串，我们查看一下  fp_num 和 s :
 
 ```SHELL
-
+(gdb) p fp_num 
+$2 = 0.69999999999999996
+(gdb) p s
+$3 = 0x7fffffffa2c1 "0.7"
+(gdb) 
 
 ```
+
+可以看到浮点数字 0.7 在计算机中表示为二进制后真实值为 0.69999999999999996，然而取精度为14后被格式化成 0.7，我们看一下这个神奇的 php_gcvt 函数：
+
+```SHELL
+(gdb) b php_gcvt
+Breakpoint 2 at 0x5555557c4fbb: file /data/php7/php-src-PHP-7.0.12/main/snprintf.c, line 143.
+(gdb) r test/test_echo.php 
+Starting program: /usr/bin/php test/test_echo.php
+
+Breakpoint 2, php_gcvt (value=0.69999999999999996, ndigit=14, dec_point=46 '.', exponent=69 'E', buf=0x7fffffffa2c1 "") at /data/php7/php-src-PHP-7.0.12/main/snprintf.c:143
+143	{
+(gdb) 
+```
+
+我们重新设置断点，并启动程序，可以看到传递给 php_gcvt 函数的各个参数的值
