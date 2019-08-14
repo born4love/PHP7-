@@ -313,6 +313,87 @@ static void xbuf_format_converter(void *xbuf, zend_bool is_char, const char *fmt
 这个函数比较长，有很多判断，我们直接使用 gdb 调试，看看执行流程：
 
 ```SHELL
+(gdb) b xbuf_format_converter
+Breakpoint 1 at 0x274088: file /data/php7/php-src-PHP-7.0.12/main/spprintf.c, line 204.
+(gdb) r test/test_echo.php 
+Starting program: /usr/bin/php test/test_echo.php
+
+Breakpoint 1, xbuf_format_converter (xbuf=0x7fffffffce00, is_char=1 '\001', fmt=0x555555a1917f "php-%s.ini", ap=0x7fffffffce60) at /data/php7/php-src-PHP-7.0.12/main/spprintf.c:204
+204	{
+(gdb) 
+```
+
+但是这里调用 xbuf_format_converter 函数传入的 fmt 参数的值是 "php-%s.ini"，显然和我们在 `_zval_get_string_func` 函数中传入的 `%.*G` 不一致，
+所以说明这个 xbuf_format_converter 函数在脚本运行期间在别的地方也被调用了，我们先不管在哪里调用的，直接用 'continue' 跳过:
+
+```SHELL
+Breakpoint 1, xbuf_format_converter (xbuf=0x7fffffffce00, is_char=1 '\001', fmt=0x555555a1917f "php-%s.ini", ap=0x7fffffffce60) at /data/php7/php-src-PHP-7.0.12/main/spprintf.c:204
+204	{
+(gdb) c
+Continuing.
+
+Breakpoint 1, xbuf_format_converter (xbuf=0x7fffffffdfc0, is_char=1 '\001', fmt=0x5555559ff745 "%s%c%s", ap=0x7fffffffe020) at /data/php7/php-src-PHP-7.0.12/main/spprintf.c:204
+204	{
+(gdb) c
+Continuing.
+
+Breakpoint 1, xbuf_format_converter (xbuf=0x7fffffffab10, is_char=0 '\000', fmt=0x555555a2fc10 "%.*G", ap=0x7fffffffab60) at /data/php7/php-src-PHP-7.0.12/main/spprintf.c:204
+204	{
+(gdb) 
 
 ```
 
+跳过两次该函数的运行后，终于到了 echo 函数调用这个函数的地方，接下来一步一步进入这个函数：
+
+
+```SHELL
+301					if (*fmt == '.') {
+(gdb) 
+302						adjust_precision = YES;
+(gdb) 
+303						fmt++;
+(gdb) 
+304						if (isdigit((int)*fmt)) {
+(gdb) 
+306						} else if (*fmt == '*') {
+(gdb) 
+307							precision = va_arg(ap, int);
+(gdb) 
+308							fmt++;
+(gdb) 
+309							if (precision < 0)
+```
+
+```SHELL
+(gdb) 
+712						s = php_gcvt(fp_num, precision, (*fmt=='H' || *fmt == 'k') ? '.' : LCONV_DECIMAL_POINT, (*fmt == 'G' || *fmt == 'H')?'E':'e', &num_buf[1]);
+
+```
+
+这个方法在循环 fmt 参数的字符串，根据对应的格式化字符来格式化我们最终要输出的数字，也就是0.7，我们不一一分析每一行的逻辑，
+一直执行 'continue' 命令单步执行，直到 `} else if (*fmt == '*') {` 这一行，如果格式化字符串中设置了 * 则，从 可变参数中获取下一个 int 参数的值，
+赋值给  precision 变量。这个参数的值也就是在调用 `zend_strpprintf(0, "%.*G", (int) EG(precision), Z_DVAL_P(op))` 时传入的 EG(precision)，
+打印一下这个值：
+
+```SHELL
+(gdb) p precision
+$1 = 14
+(gdb) 
+
+```
+这个值是14，其实 EG 表示 execute globals 也就是执行期间的全局变量，PHP在执行期间会把 php.ini 文件中的配置值解析到 EG 中，而 precision 就是在 ini
+文件中定义的，默认值是 14 如果没有修改过的话，这个值就是浮点型数字精度的最大长度，也就是 echo 输出浮点型的数字时最多会输出14位小数，多余的会被舍去，
+并执行四舍五入运算。
+
+接下来继续单步执行，直到 php_gcvt 这一行，
+
+```C
+s = php_gcvt(fp_num, precision, (*fmt=='H' || *fmt == 'k') ? '.' : LCONV_DECIMAL_POINT, (*fmt == 'G' || *fmt == 'H')?'E':'e', &num_buf[1]);
+
+```
+这个函数接收 fp_num 参数，根据精度值 precision 将其格式化为相应的字符串，我们查看一下  fp_num 和 s :
+
+```SHELL
+
+
+```
