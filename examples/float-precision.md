@@ -415,4 +415,86 @@ Breakpoint 2, php_gcvt (value=0.69999999999999996, ndigit=14, dec_point=46 '.', 
 (gdb) 
 ```
 
-我们重新设置断点，并启动程序，可以看到传递给 php_gcvt 函数的各个参数的值
+我们重新设置断点，并启动程序，可以看到传递给 php_gcvt 函数的各个参数的值，这个函数的具体实现比较复杂，涉及到浮点数二进制转换的算法问题，感觉也没办法
+说清楚，所以就大致概括一下，总体来说就是根据传入 的舍入精度值 也就是 ndigit 的值来对 value 参数的浮点数值进行格式化，最终的结果是只保留 ndigit 那么
+多个小数位，剩下的就四舍五入（当然，不同的系统语言底层可能实现略有区别，据说有的并非普通的四舍五入），所以，对于计算机内部的二进制浮点数不同的舍入精
+度 值可以打印出来不同的结果，举例如下：
+
+使用默认精度值 14
+```PHP
+<?php
+// PHP内核默认精度
+$precision = 14;
+
+ini_set('precision', $precision);
+
+$a = 0.3;
+
+echo $a ."\n";
+
+echo strlen($a);
+
+echo "\n";
+
+// output: 
+// 0.3
+// 3
+```
+
+精度值调整到 17
+```PHP
+<?php
+
+$precision = 17;
+
+ini_set('precision', $precision);
+
+$a = 0.3;
+
+
+echo $a ."\n";
+
+echo strlen($a);
+
+echo "\n";
+
+// output:
+// 0.29999999999999999
+// 19
+```
+精度值调整到 60
+```PHP
+<?php
+
+$precision = 60;
+
+ini_set('precision', $precision);
+
+$a = 0.3;
+
+
+echo $a ."\n";
+
+echo strlen($a);
+
+echo "\n";
+
+// output:
+// 0.299999999999999988897769753748434595763683319091796875
+// 56
+```
+
+好了，相信你已经明白了，PHP内核把浮点数舍入精度设置成14是有意的，可能因为这样大部分浮点数都能表示成准确的十进制值，一旦把这个值调高，十进制浮点数在
+计算机中的二进制表示就原形毕露了，但是当精度值超过 54 之后，就达到了存储的极限，也就是最多保留了 54 位小数。
+
+这样应该能解释文首的两个问题了。
+
+#### Read More
+
+* [IEEE 754 浮点数的表示精度探讨](https://www.cnblogs.com/bossin/archive/2007/04/08/704567.html)
+
+* [浮点数的二进制表示](http://www.ruanyifeng.com/blog/2010/06/ieee_floating-point_representation.html)
+
+* [binary-numbers-floating-point-conversion](https://blog.penjee.com/binary-numbers-floating-point-conversion/)
+
+* [IEEE 754 创始人博客](https://people.eecs.berkeley.edu/~wkahan/)
